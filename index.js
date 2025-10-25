@@ -1,19 +1,24 @@
 import express from "express";
 import path from "path";
 import { fileURLToPath } from "url";
+import { scrapePinterestImages } from "./pinterest-scraper.js";
 
 const app = express();
-
-// Needed for serving the frontend HTML file
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Serve your index.html
+// Serve your frontend
 app.use(express.static(__dirname));
 
-// Example route (you’ll replace this with your Pinterest scraper later)
-app.get("/api/hello", (req, res) => {
-  res.json({ message: "Backend connected successfully!" });
+// Pinterest scrape route
+app.get("/scrape/:query", async (req, res) => {
+  try {
+    const images = await scrapePinterestImages(req.params.query);
+    res.json(images);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error scraping Pinterest images" });
+  }
 });
 
 app.listen(3000, () => {
