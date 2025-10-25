@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import * as api from '../lib/storage'
 
 const AuthContext = createContext(null)
 
@@ -6,26 +7,15 @@ export function useAuth() {
   return useContext(AuthContext)
 }
 
-function loadUsers() {
-  try {
-    return JSON.parse(localStorage.getItem('fitcast_users') || '{}')
-  } catch (e) {
-    return {}
-  }
-}
-
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const raw = localStorage.getItem('fitcast_user')
-    if (raw) setUser(JSON.parse(raw))
+    api.getCurrentUser()
+      .then(user => setUser(user))
+      .finally(() => setLoading(false))
   }, [])
-
-  function persistCurrent(u) {
-    if (u) localStorage.setItem('fitcast_user', JSON.stringify(u))
-    else localStorage.removeItem('fitcast_user')
-  }
 
   const signUp = async ({ email, password, username }) => {
     const users = loadUsers()

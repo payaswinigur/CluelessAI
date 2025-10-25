@@ -7,14 +7,23 @@ export default function Dashboard() {
   const [collections, setCollections] = useState([])
 
   useEffect(() => {
-    setCollections(getCollections())
-  }, [user])
+    if (user) {
+      getCollections().then(setCollections)
+    } else {
+      setCollections([])
+    }
+  }, [user, getCollections])
 
-  const create = () => {
+  const create = async () => {
     const title = prompt('New collection title')
     if (!title) return
-    const col = addCollection(title)
-    setCollections((s) => [col, ...s])
+    try {
+      const col = await addCollection(title)
+      setCollections((s) => [col, ...s])
+    } catch (error) {
+      console.error('Failed to create collection:', error)
+      alert('Failed to create collection')
+    }
   }
 
   return (

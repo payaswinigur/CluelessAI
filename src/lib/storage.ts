@@ -1,6 +1,4 @@
-// Constants
-const PREFIX = 'fitcast_'
-const API_URL = '' // Removed API URL dependency since we're using local storage
+const API_URL = import.meta.env.VITE_API_URL
 
 // Types
 interface User {
@@ -14,52 +12,62 @@ interface Collection {
   createdAt: string
 }
 
-// Local storage helpers
-function getItem<T>(key: string, defaultValue: T): T {
+// API helpers
+async function apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  })
+
+  if (!response.ok) {
+    throw new Error(`API call failed: ${response.statusText}`)
+  }
+
+  return response.json()
+}
+
+// Authentication
+export async function getCurrentUser(): Promise<User | null> {
   try {
-    const item = localStorage.getItem(PREFIX + key)
-    return item ? JSON.parse(item) : defaultValue
+    return await apiCall<User>('/auth/current')
   } catch {
-    return defaultValue
+    return null
   }
 }
 
-function setItem(key: string, value: any): void {
-  localStorage.setItem(PREFIX + key, JSON.stringify(value))
+export async function signIn(credentials: { email: string; password: string }): Promise<User> {
+  return apiCall<User>('/auth/signin', {
+    method: 'POST',
+    body: JSON.stringify(credentials)
+  })
 }
 
-// Data access functions
-export function getCurrentUser(): User | null {
-  return getItem<User | null>('user', null)
+export async function signUp(userData: { email: string; password: string; username: string }): Promise<User> {
+  return apiCall<User>('/auth/signup', {
+    method: 'POST',
+    body: JSON.stringify(userData)
+  })
 }
 
-export function setCurrentUser(user: User | null): void {
-  if (user) {
-    setItem('user', user)
-  } else {
-    localStorage.removeItem(PREFIX + 'user')
-  }
+export async function signOut(): Promise<void> {
+  await apiCall('/auth/signout', { method: 'POST' })
 }
 
-export function getUserCollections(email: string): Collection[] {
-  return getItem<Collection[]>(`collections_${email}`, [])
+// Collections
+export async function getUserCollections(): Promise<Collection[]> {
+  return apiCall<Collection[]>('/collections')
 }
 
-export function addUserCollection(email: string, title: string): Collection {
-  const collection = {
-    id: Date.now().toString(),
-    title,
-    createdAt: new Date().toISOString()
-  }
-  
-  const collections = getUserCollections(email)
-  collections.unshift(collection)
-  setItem(`collections_${email}`, collections)
-  
-  return collection
+export async function addUserCollection(title: string): Promise<Collection> {
+  return apiCall<Collection>('/collections', {
+    method: 'POST',
+    body: JSON.stringify({ title })
+  })
 }
-
 // User management
-export function getUsers(): Record<string, User & { password: string }> {
-  return getItem<Record<string, User & { password: string }>>('users', {})
+export async function getUsers(): Promise<Record<string, User & { password: string }>> {
+  return apiCall<Record<string, User & { password: string }>>('/users')
 }

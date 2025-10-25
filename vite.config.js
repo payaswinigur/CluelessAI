@@ -10,9 +10,12 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     base: '/',
     server: {
-      port: 5173,
+      port: 3000,
       strictPort: true,
-      host: true
+      host: '0.0.0.0',
+      watch: {
+        usePolling: true
+      }
     },
     define: {
       __API_URL__: JSON.stringify(env.VITE_API_URL || '')
