@@ -1,5 +1,4 @@
-# This is a GitHub branch protection rules export
-# Import these settings in your repository settings
+
 
 {
   "branch_protection_rules": [

@@ -1,5 +1,8 @@
+// Constants
 const PREFIX = 'fitcast_'
+const API_URL = '' // Removed API URL dependency since we're using local storage
 
+// Types
 interface User {
   email: string
   username?: string
