@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FitCast Preview (no-build)</title>
+    <script>
+      tailwind = typeof tailwind === 'undefined' ? {} : tailwind
+      tailwind.config = { theme: { extend: { colors: { primary: '#06b6d4', surface: '#0b1220' } } } }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React UMD -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel for in-browser JSX transform (development only) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="icon" href="/public/favicon.svg" />
+    <style>
+      html,body,#root{height:100%}
+      body{margin:0;font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,'Helvetica Neue',Arial;color:#e6eef6;background:linear-gradient(180deg,#071026 0%, #071827 100%)}
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const { useState, useEffect, createContext, useContext } = React
+
+      // Simple auth using localStorage (same keys as project)
+      const AuthContext = createContext(null)
+
+      function loadUsers(){ try{ return JSON.parse(localStorage.getItem('fitcast_users')||'{}') }catch(e){return {}} }
+
+      function AuthProvider({children}){
+        const [user,setUser]=useState(null)
+        useEffect(()=>{ const raw=localStorage.getItem('fitcast_user'); if(raw) setUser(JSON.parse(raw)) },[])
+        const persist=(u)=>{ if(u) localStorage.setItem('fitcast_user',JSON.stringify(u)); else localStorage.removeItem('fitcast_user') }
+        const signUp=({email,password,username})=>{ const users=loadUsers(); if(users[email]) throw new Error('User already exists'); users[email]={email,password,username}; localStorage.setItem('fitcast_users',JSON.stringify(users)); const u={email,username}; setUser(u); persist(u); return u }
+        const signIn=({email,password})=>{ const users=loadUsers(); const found=users[email]; if(!found||found.password!==password) throw new Error('Invalid'); const u={email:found.email,username:found.username}; setUser(u); persist(u); return u }
+        const signOut=()=>{ setUser(null); persist(null) }
+        const getCollections=()=>{ if(!user) return []; try{ return JSON.parse(localStorage.getItem('fitcast_collections_'+user.email)||'[]') }catch(e){return []} }
+        const addCollection=(title)=>{ if(!user) throw new Error('Not auth'); const key='fitcast_collections_'+user.email; const col={id:Date.now().toString(),title,createdAt:new Date().toISOString()}; const list=getCollections(); list.unshift(col); localStorage.setItem(key,JSON.stringify(list)); return col }
+        return <AuthContext.Provider value={{user,signUp,signIn,signOut,getCollections,addCollection}}>{children}</AuthContext.Provider>
+      }
+
+      function useAuth(){ return useContext(AuthContext) }
+
+      // Simple hash router
+      function useHashRoute(){ const [route,setRoute]=useState(window.location.hash||'#/'); useEffect(()=>{ const onHash=()=>setRoute(window.location.hash||'#/'); window.addEventListener('hashchange',onHash); return ()=>window.removeEventListener('hashchange',onHash) },[]); return route }
+
+      function Header(){ const {user,signOut}=useAuth(); return (
+        <header className="py-4">
+          <div className="max-w-4xl mx-auto px-4 flex items-center justify-between">
+            <a href="#/" className="text-xl font-bold text-white">FitCast</a>
+            <nav className="flex items-center gap-4 text-sm text-slate-300">
+              <a href="#/dashboard" className="hover:text-white">Dashboard</a>
+              <a href="#/profile" className="hover:text-white">Profile</a>
+              {user ? (<div className="flex items-center gap-3"><span className="text-slate-200">{user.username||user.email}</span><button onClick={signOut} className="bg-primary text-slate-900 px-3 py-1 rounded">Sign out</button></div>) : (<a href="#/auth" className="bg-primary text-slate-900 px-3 py-1 rounded">Sign</a>)}
+            </nav>
+          </div>
+        </header>
+      ) }
+
+      function Landing(){ return (<section className="min-h-[60vh] flex items-center"><div className="max-w-4xl mx-auto px-4 text-center"><h1 className="text-4xl font-extrabold mb-4">Welcome to FitCast</h1><p className="text-slate-300 mb-6">Mobile-first fitness experience prototype.</p><div className="flex justify-center gap-4"><a href="#/auth" className="bg-primary text-slate-900 px-5 py-2 rounded-md">Get started</a><a href="#/dashboard" className="border border-slate-600 text-slate-200 px-5 py-2 rounded-md">Explore</a></div></div></section>) }
+
+      function Auth(){ const [mode,setMode]=useState('signin'); const [email,setEmail]=useState(''); const [password,setPassword]=useState(''); const [username,setUsername]=useState(''); const [err,setErr]=useState(null); const auth=useAuth(); const navigate=(to)=>window.location.hash=to
+        const submit=async(e)=>{ e.preventDefault(); setErr(null); try{ if(mode==='signin'){ await auth.signIn({email,password}) } else { await auth.signUp({email,password,username}) } navigate('#/dashboard') }catch(err){ setErr(err.message) } }
+        return (<section className="min-h-[60vh] flex items-center"><div className="max-w-md mx-auto w-full bg-surface p-6 rounded-lg"><div className="flex gap-2 mb-4"><button onClick={()=>setMode('signin')} className={`flex-1 py-2 rounded ${mode==='signin' ? 'bg-primary text-slate-900' : 'bg-transparent text-slate-300'}`}>Sign in</button><button onClick={()=>setMode('signup')} className={`flex-1 py-2 rounded ${mode==='signup' ? 'bg-primary text-slate-900' : 'bg-transparent text-slate-300'}`}>Sign up</button></div>{err && <div className="text-red-400 mb-2">{err}</div>}<form onSubmit={submit}>{mode==='signup' && (<label className="block mb-3"><div className="text-sm text-slate-300 mb-1">Display name</div><input value={username} onChange={(e)=>setUsername(e.target.value)} className="w-full p-2 rounded bg-transparent border border-slate-700 text-white" placeholder="Your name"/></label>)}<label className="block mb-3"><div className="text-sm text-slate-300 mb-1">Email</div><input value={email} onChange={(e)=>setEmail(e.target.value)} type="email" className="w-full p-2 rounded bg-transparent border border-slate-700 text-white" placeholder="you@example.com"/></label><label className="block mb-4"><div className="text-sm text-slate-300 mb-1">Password</div><input value={password} onChange={(e)=>setPassword(e.target.value)} type="password" className="w-full p-2 rounded bg-transparent border border-slate-700 text-white" placeholder="••••••"/></label><div className="flex justify-end"><button type="submit" className="bg-primary text-slate-900 px-4 py-2 rounded">{mode==='signin'?'Sign in':'Create account'}</button></div></form></div></section>) }
+
+      function Dashboard(){ const auth=useAuth(); const [cols,setCols]=useState([]); useEffect(()=>{ setCols(auth.getCollections()) },[auth.user]); const create=()=>{ const t=prompt('New collection title'); if(!t) return; const c=auth.addCollection(t); setCols(s=>[c,...s]) }; return (<section className="py-6"><div className="max-w-4xl mx-auto px-4"><div className="flex items-center justify-between mb-4"><h2 className="text-2xl font-semibold">Your Collections</h2><div><button onClick={create} className="bg-primary text-slate-900 px-3 py-1 rounded">New</button></div></div>{cols.length===0?(<div className="text-slate-400">No collections yet — create one.</div>):(<div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">{cols.map(c=>(<article key={c.id} className="bg-surface p-4 rounded-lg"><h3 className="text-white text-lg font-semibold">{c.title}</h3><p className="text-slate-400 text-sm">{new Date(c.createdAt).toLocaleString()}</p></article>))}</div>)}</div></section>) }
+
+      function Profile(){ const auth=useAuth(); if(!auth.user) return (<section className="py-8"><div className="max-w-4xl mx-auto px-4 text-center text-slate-300">You are not signed in. Please sign in to view your profile.</div></section>); const cols=auth.getCollections(); return (<section className="py-8"><div className="max-w-4xl mx-auto px-4"><h2 className="text-2xl font-semibold mb-2">{auth.user.username||auth.user.email}</h2><div className="mb-4 text-slate-400">Email: {auth.user.email}</div><button onClick={auth.signOut} className="bg-red-600 text-white px-3 py-1 rounded">Sign out</button><div className="mt-6"><h3 className="text-lg font-medium">Your collections</h3>{cols.length===0?(<div className="text-slate-400">No collections yet.</div>):(<ul className="mt-2 list-disc list-inside text-slate-200">{cols.map(c=>(<li key={c.id}>{c.title} — {new Date(c.createdAt).toLocaleString()}</li>))}</ul>)}</div></div></section>) }
+
+      function App(){ const route = useHashRoute(); return (<div className="min-h-screen flex flex-col"><Header /><main className="flex-1">{ route.startsWith('#/dashboard') ? <Dashboard/> : route.startsWith('#/profile') ? <Profile/> : route.startsWith('#/auth') ? <Auth/> : <Landing/> }</main><footer className="mt-8 py-6"><div className="max-w-4xl mx-auto px-4 text-center text-slate-400 text-sm"><small>© {new Date().getFullYear()} FitCast — Preview</small></div></footer></div>) }
+
+      ReactDOM.createRoot(document.getElementById('root')).render(
+        <AuthProvider><App/></AuthProvider>
+      )
+    </script>
+  </body>
+</html>
