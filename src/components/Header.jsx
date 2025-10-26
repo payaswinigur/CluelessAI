@@ -1,9 +1,10 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../auth/AuthProvider'
 
 export default function Header() {
   const { user, signOut } = useAuth()
+  const navigate = useNavigate()
 
   return (
     <header className="py-4">
@@ -15,10 +16,22 @@ export default function Header() {
           {user ? (
             <div className="flex items-center gap-3">
               <span className="text-slate-200">{user.username || user.email}</span>
-              <button onClick={signOut} className="bg-primary text-slate-900 px-3 py-1 rounded">Sign out</button>
+              <button
+                onClick={() => { signOut(); navigate('/') }}
+                className="bg-primary text-slate-900 px-3 py-1 rounded"
+                aria-label="Sign out"
+              >
+                Sign out
+              </button>
             </div>
           ) : (
-            <Link to="/auth" className="bg-primary text-slate-900 px-3 py-1 rounded">Sign</Link>
+            <button
+              onClick={() => navigate('/auth')}
+              className="bg-primary text-slate-900 px-3 py-1 rounded"
+              aria-label="Sign in"
+            >
+              Sign in
+            </button>
           )}
         </nav>
       </div>

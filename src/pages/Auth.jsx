@@ -8,7 +8,7 @@ export default function Auth() {
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
   const [error, setError] = useState(null)
-  const { signIn, signUp } = useAuth()
+  const auth = useAuth()
   const navigate = useNavigate()
 
   const submit = async (e) => {
@@ -16,9 +16,9 @@ export default function Auth() {
     setError(null)
     try {
       if (mode === 'signin') {
-        await signIn({ email, password })
+        await auth.signIn({ email, password })
       } else {
-        await signUp({ email, password, username })
+        await auth.signUp({ email, password, username })
       }
       navigate('/dashboard')
     } catch (err) {
